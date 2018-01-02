@@ -1,171 +1,165 @@
-'use strict';
+import React, { Component } from 'react';
+import ReactDOM from 'react-dom';
+
+import RoomNameForm from './components/RoomNameForm';
+import ActiveRoomControls from './components/ActiveRoomControls';
+import Preview from './components/Preview';
+import RemoteMedia from './components/RemoteMedia';
+import Log from './components/Log';
+import {attachParticipantTracks, attachTracks, detachParticipantTracks} from './utils';
 
 var Video = require('twilio-video');
 
-var activeRoom;
-var previewTracks;
-var identity;
-var roomName;
 
-// Attach the Tracks to the DOM.
-function attachTracks(tracks, container) {
-  tracks.forEach(function(track) {
-    container.appendChild(track.attach());
-  });
-}
+class App extends Component{
+  constructor(props){
+    super(props);
+    this.state = {logs:[], identity:null, room:null};
+    this.log = this.log.bind(this);
+    this.roomJoined = this.roomJoined.bind(this);
+    this.stopLocalTracks = this.stopLocalTracks.bind(this);
+    this.myVideoPreviewTracks = null;
+  }
 
-// Attach the Participant's Tracks to the DOM.
-function attachParticipantTracks(participant, container) {
-  var tracks = Array.from(participant.tracks.values());
-  attachTracks(tracks, container);
-}
-
-// Detach the Tracks from the DOM.
-function detachTracks(tracks) {
-  tracks.forEach(function(track) {
-    track.detach().forEach(function(detachedElement) {
-      detachedElement.remove();
+  componentDidMount(){
+    fetch('/token')
+    .then((response)=>{
+      if(response.ok) {
+        return response.json();
+      }
+      throw new Error('Network response was not ok.');
+    })
+    .then((json)=>{
+      console.log(json);
+      this.setState({identity:json.identity, token:json.token});
+    })
+    .catch((error)=>{
+      console.error(error);
     });
-  });
-}
+  }
 
-// Detach the Participant's Tracks from the DOM.
-function detachParticipantTracks(participant) {
-  var tracks = Array.from(participant.tracks.values());
-  detachTracks(tracks);
-}
-
-// When we are about to transition away from this page, disconnect
-// from the room, if joined.
-window.addEventListener('beforeunload', leaveRoomIfJoined);
-
-// Obtain a token from the server in order to connect to the Room.
-$.getJSON('/token', function(data) {
-  identity = data.identity;
-  document.getElementById('room-controls').style.display = 'block';
-
-  // Bind button to join Room.
-  document.getElementById('button-join').onclick = function() {
-    roomName = document.getElementById('room-name').value;
-    if (!roomName) {
-      alert('Please enter a room name.');
-      return;
+  componentWillUnmount(){
+    if(this.state.room){
+      this.state.room.disconnect();
     }
+  }
 
-    log("Joining room '" + roomName + "'...");
+  render(){
+    const roomControls = this.state.room ? 
+        <ActiveRoomControls roomName={this.state.room.name} onLeaveRoomClicked={this.onLeaveClicked.bind(this)} /> 
+      : 
+        <RoomNameForm onJoinClicked={this.onJoinClicked.bind(this)} />;
+    return(
+      <div>
+        <RemoteMedia room={this.state.room} remoteDiv={(remoteDivContainer)=>{this.setState({remoteDivContainer:remoteDivContainer})}} />
+        <div id="controls">
+          <Preview localDiv={(localDivContainer)=>{this.setState({localDivContainer:localDivContainer})}} onLocalPreviewStarted={this.onLocalPreviewStarted.bind(this)}/>
+          {roomControls}
+          <Log logs={this.state.logs}/>
+        </div>
+      </div>
+    );
+  }
+
+  onLeaveClicked(){
+    this.log('Leaving room...');
+    const activeRoom = this.state.room;
+    activeRoom.disconnect();
+    this.setState({room:null});
+  }
+
+  onJoinClicked(roomName){
+    this.log("Joining room '" + roomName + "'...");
     var connectOptions = {
       name: roomName,
       logLevel: 'debug'
     };
 
-    if (previewTracks) {
-      connectOptions.tracks = previewTracks;
+    if (this.myVideoPreviewTracks) {
+      connectOptions.tracks = this.myVideoPreviewTracks;
     }
 
     // Join the Room with the token from the server and the
     // LocalParticipant's Tracks.
-    Video.connect(data.token, connectOptions).then(roomJoined, function(error) {
-      log('Could not connect to Twilio: ' + error.message);
+    Video.connect(this.state.token, connectOptions)
+    .then((room)=>{
+      this.roomJoined(room);
+    })
+    .catch((error)=> {
+      this.log('Could not connect to Twilio: ' + error.message);
     });
-  };
-
-  // Bind button to leave Room.
-  document.getElementById('button-leave').onclick = function() {
-    log('Leaving room...');
-    activeRoom.disconnect();
-  };
-});
-
-// Successfully connected!
-function roomJoined(room) {
-  window.room = activeRoom = room;
-
-  log("Joined as '" + identity + "'");
-  document.getElementById('button-join').style.display = 'none';
-  document.getElementById('button-leave').style.display = 'inline';
-
-  // Attach LocalParticipant's Tracks, if not already attached.
-  var previewContainer = document.getElementById('local-media');
-  if (!previewContainer.querySelector('video')) {
-    attachParticipantTracks(room.localParticipant, previewContainer);
   }
 
-  // Attach the Tracks of the Room's Participants.
-  room.participants.forEach(function(participant) {
-    log("Already in Room: '" + participant.identity + "'");
-    var previewContainer = document.getElementById('remote-media');
-    attachParticipantTracks(participant, previewContainer);
-  });
+  roomJoined(room){
+    this.log("Joined as '" + this.state.identity + "'");
+    this.setState({room:room});
 
-  // When a Participant joins the Room, log the event.
-  room.on('participantConnected', function(participant) {
-    log("Joining: '" + participant.identity + "'");
-  });
+    const previewContainer = this.state.localDivContainer;
+    if (!previewContainer.querySelector('video')) {
+      attachParticipantTracks(room.localParticipant, previewContainer);
+    }
 
-  // When a Participant adds a Track, attach it to the DOM.
-  room.on('trackAdded', function(track, participant) {
-    log(participant.identity + " added track: " + track.kind);
-    var previewContainer = document.getElementById('remote-media');
-    attachTracks([track], previewContainer);
-  });
+    room.participants.forEach((participant)=> {
+      this.log("Already in Room: '" + participant.identity + "'");
+      attachParticipantTracks(participant, this.state.remoteDivContainer);
+    });
 
-  // When a Participant removes a Track, detach it from the DOM.
-  room.on('trackRemoved', function(track, participant) {
-    log(participant.identity + " removed track: " + track.kind);
-    detachTracks([track]);
-  });
+    // When a Participant joins the Room, log the event.
+    room.on('participantConnected', (participant)=> {
+      this.log("Joining: '" + participant.identity + "'");
+    });
 
-  // When a Participant leaves the Room, detach its Tracks.
-  room.on('participantDisconnected', function(participant) {
-    log("Participant '" + participant.identity + "' left the room");
-    detachParticipantTracks(participant);
-  });
+    // When a Participant adds a Track, attach it to the DOM.
+    room.on('trackAdded', (track, participant)=> {
+      this.log(participant.identity + " added track: " + track.kind);
+      attachTracks([track], this.state.remoteDivContainer);
+    });
 
-  // Once the LocalParticipant leaves the room, detach the Tracks
-  // of all Participants, including that of the LocalParticipant.
-  room.on('disconnected', function() {
-    log('Left');
-    if (previewTracks) {
-      previewTracks.forEach(function(track) {
+    // When a Participant removes a Track, detach it from the DOM.
+    room.on('trackRemoved', (track, participant)=> {
+      this.log(participant.identity + " removed track: " + track.kind);
+      detachTracks([track]);
+    });
+
+    // When a Participant leaves the Room, detach its Tracks.
+    room.on('participantDisconnected', (participant)=> {
+      this.log("Participant '" + participant.identity + "' left the room");
+      detachParticipantTracks(participant);
+    });
+
+    // Once the LocalParticipant leaves the room, detach the Tracks
+    // of all Participants, including that of the LocalParticipant.
+    room.on('disconnected', ()=> {
+      this.log('Left');
+      this.stopLocalTracks();
+      detachParticipantTracks(room.localParticipant);
+      room.participants.forEach(detachParticipantTracks);
+      this.setState({room:null});
+    });
+
+  }
+
+  log(logMessage){
+    const newItem = {logMessage: logMessage, id:Date.now()};
+    this.setState(prevState => ({
+      logs: prevState.logs.concat(newItem)
+    }));
+  }
+
+  onLocalPreviewStarted(tracks){
+    this.myVideoPreviewTracks=tracks;
+  }
+
+  stopLocalTracks(){
+    if (this.myVideoPreviewTracks) {
+      this.myVideoPreviewTracks.forEach(function(track) {
         track.stop();
       });
     }
-    detachParticipantTracks(room.localParticipant);
-    room.participants.forEach(detachParticipantTracks);
-    activeRoom = null;
-    document.getElementById('button-join').style.display = 'inline';
-    document.getElementById('button-leave').style.display = 'none';
-  });
-}
-
-// Preview LocalParticipant's Tracks.
-document.getElementById('button-preview').onclick = function() {
-  var localTracksPromise = previewTracks
-    ? Promise.resolve(previewTracks)
-    : Video.createLocalTracks();
-
-  localTracksPromise.then(function(tracks) {
-    window.previewTracks = previewTracks = tracks;
-    var previewContainer = document.getElementById('local-media');
-    if (!previewContainer.querySelector('video')) {
-      attachTracks(tracks, previewContainer);
-    }
-  }, function(error) {
-    console.error('Unable to access local media', error);
-    log('Unable to access Camera and Microphone');
-  });
-};
-
-// Activity log.
-function log(message) {
-  var logDiv = document.getElementById('log');
-  logDiv.innerHTML += '<p>&gt;&nbsp;' + message + '</p>';
-  logDiv.scrollTop = logDiv.scrollHeight;
-}
-
-// Leave Room.
-function leaveRoomIfJoined() {
-  if (activeRoom) {
-    activeRoom.disconnect();
   }
 }
+
+ReactDOM.render(
+  <App />,
+  document.getElementById('app')
+);
