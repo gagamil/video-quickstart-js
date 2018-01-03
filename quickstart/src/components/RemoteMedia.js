@@ -8,8 +8,8 @@ class RemoteMedia extends Component{
 
   render(){
     return(
-      <div id="remote-media" ref={(remoteMedia) => { this.remoteMedia = remoteMedia; }}>
-      
+      <div className="video-user" ref={(remoteMedia) => { this.remoteMedia = remoteMedia; }}>
+        <div className="text">Remote video</div>
       </div>
     );
   }

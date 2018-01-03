@@ -7,11 +7,11 @@ class RoomNameForm extends Component{
   }
 
   render(){
-    const button = this.state.roomName.length > 0 ? <button id="button-join" onClick={()=>{this.props.onJoinClicked(this.state.roomName)}}>Join Room</button> : null;
+    const button = this.state.roomName.length > 0 ? <button className="button" id="button-join" onClick={()=>{this.props.onJoinClicked(this.state.roomName)}}>Join Room</button> : null;
     return(
       <div id="room-controls">
         <p className="instructions">Room Name:</p>
-        <input value={this.state.roomName} onChange={this.roomNameChanged.bind(this)} id="room-name" type="text" placeholder="Enter a room name" />
+        <input className="input" value={this.state.roomName} onChange={this.roomNameChanged.bind(this)} id="room-name" type="text" placeholder="Enter a room name" />
         {button}
       </div>
     );

@@ -16,10 +16,8 @@ class Preview extends Component{
 
   render(){
     return(
-      <div id="preview">
-        <p className="instructions">Hello Beautiful</p>
-        <div id="local-media" ref={(localMedia) => { this.localMedia = localMedia; }}></div>
-        <button onClick={()=>{this.preview()}} id="button-preview">Preview My Camera</button>
+      <div className="video-me" ref={(localMedia) => { this.localMedia = localMedia; }}>
+        <div className="text">Local video</div>
       </div>
     );
   }

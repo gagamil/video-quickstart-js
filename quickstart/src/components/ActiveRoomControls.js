@@ -5,7 +5,7 @@ class ActiveRoomControls extends Component{
     return(
       <div id="room-controls">
         <p className="instructions">Room Name: {this.props.roomName}</p>
-        <button id="button-leave" onClick={this.props.onLeaveRoomClicked} >Leave Room</button>
+        <button className="button" id="button-leave" onClick={this.props.onLeaveRoomClicked} >Leave Room</button>
       </div>
     );
   }

@@ -50,14 +50,27 @@ class App extends Component{
       : 
         <RoomNameForm onJoinClicked={this.onJoinClicked.bind(this)} />;
     return(
-      <div>
-        <RemoteMedia room={this.state.room} remoteDiv={(remoteDivContainer)=>{this.setState({remoteDivContainer:remoteDivContainer})}} />
-        <div id="controls">
-          <Preview localDiv={(localDivContainer)=>{this.setState({localDivContainer:localDivContainer})}} onLocalPreviewStarted={this.onLocalPreviewStarted.bind(this)}/>
-          {roomControls}
-          <Log logs={this.state.logs}/>
+      <section className="section">
+      <div className="container">
+        <div className="columns">
+          <div className="column">
+            {roomControls}
+          </div>
+          <div className="column is-two-thirds">
+            <div className="wrapper">
+              <div className="video">
+                <div className="other">
+                  <RemoteMedia room={this.state.room} remoteDiv={(remoteDivContainer)=>{this.setState({remoteDivContainer:remoteDivContainer})}} />
+                  <Preview localDiv={(localDivContainer)=>{this.setState({localDivContainer:localDivContainer})}} onLocalPreviewStarted={this.onLocalPreviewStarted.bind(this)}/>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
+    </section>
+
+      
     );
   }
 
