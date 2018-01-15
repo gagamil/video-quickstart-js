@@ -52,25 +52,20 @@ class App extends Component{
     return(
       <section className="section">
       <div className="container">
+        <div className="header">header</div>
         <div className="columns">
-          <div className="column">
+          <div className="column column-1">
             {roomControls}
           </div>
-          <div className="column is-two-thirds">
-            <div className="wrapper">
-              <div className="video">
-                <div className="other">
-                  <RemoteMedia room={this.state.room} remoteDiv={(remoteDivContainer)=>{this.setState({remoteDivContainer:remoteDivContainer})}} />
-                  <Preview localDiv={(localDivContainer)=>{this.setState({localDivContainer:localDivContainer})}} onLocalPreviewStarted={this.onLocalPreviewStarted.bind(this)}/>
-                </div>
-              </div>
-            </div>
+          <div className="column column-4">
+            <RemoteMedia room={this.state.room} remoteDiv={(remoteDivContainer)=>{this.setState({remoteDivContainer:remoteDivContainer})}} />
+            <Preview localDiv={(localDivContainer)=>{this.setState({localDivContainer:localDivContainer})}} onLocalPreviewStarted={this.onLocalPreviewStarted.bind(this)}/>
           </div>
+          <div className="column column-2"><img src="auto.png" alt="image"/></div>
         </div>
+        <div className="footer">footer</div>
       </div>
     </section>
-
-      
     );
   }
 
